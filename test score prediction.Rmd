@@ -1,0 +1,60 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+Loading data. Need to include stringAsFactors in order for R to interpret chr format as factors
+```{r}
+train = read.csv("pisa2009train.csv", stringsAsFactors = TRUE)
+test = read.csv("pisa2009test.csv", stringsAsFactors = TRUE)
+```
+
+Finding avg reading test score of males
+```{r}
+tapply(train$readingScore, train$male, mean)
+```
+
+Removing null values
+```{r}
+train = na.omit(train)
+test = na.omit(test)
+```
+
+Setting reference level of the factor variable "raceeth" to "White" because it is the most common value for that variable in the dataset. R by default sets the reference level to the first value alphabetically, in this case "American Indian / Alaska Native"
+```{r}
+train$raceeth = relevel(train$raceeth, "White")
+test$raceeth = relevel(test$raceeth, "White")
+```
+
+Building model. Note "." means all
+```{r}
+lmScore = lm(readingScore ~ ., data = train)
+summary(lmScore)
+```
+RMSE
+```{r}
+SSE = sum(lmScore$residuals^2)
+RMSE = sqrt(SSE/nrow(train))
+RMSE
+```
+
+Score prediction
+```{r}
+predTest = predict(lmScore, newdata = test)
+summary(predTest)
+```
+
+RMSE
+```{r}
+SSE = sum((predTest - test$readingScore)^2)
+RMSE = sqrt(SSE/nrow(test))
+RMSE
+```
+
+
+R2 of predictions
+```{r}
+SST = sum((mean(train$readingScore) - test$readingScore)^2)
+R2 = 1 - SSE/SST
+R2
+```
+
