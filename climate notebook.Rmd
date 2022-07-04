@@ -1,0 +1,45 @@
+---
+title: "Climate Change Linear Regression"
+output: html_notebook
+---
+Loading and splitting data into train and test partitions
+```{r}
+climate = read.csv("climate_change.csv")
+climate_train = subset(climate, Year<=2006)
+climate_test = subset(climate, Year>2006)
+```
+
+Building a LM to predict Temp
+```{r}
+TempReg = lm(Temp ~ MEI + CO2 + CH4 + N2O + CFC.11 + CFC.12 + TSI + Aerosols, data = climate_train)
+summary(TempReg)
+```
+
+Computing correlations 
+```{r}
+cor(climate_train)
+```
+
+Reduced model
+```{r}
+TempReg2 = lm(Temp ~ MEI + TSI + Aerosols + N2O, data = climate_train)
+summary(TempReg2)
+```
+We removed several of the variables that are highly correlated with each other.
+
+How would R have done it using the step function?
+```{r}
+stepReg = step(TempReg)
+summary(stepReg)
+```
+Only removed CH4, not the other colinear variables.
+
+Now using the test dataset:
+```{r}
+TempPrediction = predict(stepReg, newdata = climate_test)
+SSE = sum((TempPrediction - climate_test$Temp)^2)
+SST = sum((mean(climate_train$Temp) - climate_test$Temp)^2)
+R2 = 1 - SSE/SST
+R2
+```
+
