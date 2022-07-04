@@ -1,0 +1,103 @@
+---
+title: "Moneyball in the NBA"
+output: html_notebook
+---
+
+## Load data and examine structure
+
+```{r}
+NBA = read.csv("NBA_train.csv")
+str(NBA)
+```
+
+Creating a table comparing season wins to playoffs variable. From this, it looks like getting around 42 wins gets you a pretty good chance of making it to the playoffs.
+
+```{r}
+table(NBA$W, NBA$Playoffs)
+
+```
+
+Creating variable "PTSdiff" and creating a scatter plot with Wins
+
+```{r}
+NBA$PTSdiff = NBA$PTS - NBA$oppPTS
+plot(NBA$PTSdiff, NBA$W)
+```
+
+Creating linear model to predict Wins using the variable PTSdiff
+
+```{r}
+WinsReg = lm(W~PTSdiff, data = NBA)
+summary(WinsReg)
+```
+
+Our regression equation is: *Wins = 41 + 0.0326(PTSdiff)*
+
+What does PTSdiff need to equal in order to get at least 42 wins, and therefore make it to the playoffs?
+
+*PTSdiff \>= (42-41)/0.0326 = 30.67*
+
+So we need to score on average 31 more points in order to win at least 42 games.
+
+Creating a linear regression to predict points using 2 pointer attempts, 3 pointer attempts, free throw attempts, assists, offensive rebounds, defensive rebounds, turnovers, steals, and blocks.
+
+```{r}
+PointsReg = lm(PTS ~ X2PA + X3PA + FTA + AST + ORB + DRB + TOV + STL + BLK, data = NBA)
+summary(PointsReg)
+```
+
+```{r}
+SSE = sum(PointsReg$residuals^2)
+RMSE = sqrt(SSE/nrow(NBA))
+RMSE
+```
+
+This is the Root Mean Square Error, which tells us we make an error of about 184.4 season points.
+
+Removing insignificant variables, staring with TOV because it has the highest P value.
+
+```{r}
+PointsReg2 = lm(PTS ~ X2PA + X3PA + FTA + AST + ORB + DRB + STL + BLK, data = NBA)
+summary(PointsReg2)
+```
+
+```{r}
+PointsReg3 = lm(PTS ~ X2PA + X3PA + FTA + AST + ORB + STL + BLK, data = NBA)
+summary(PointsReg3)
+```
+
+```{r}
+PointsReg4 = lm(PTS ~ X2PA + X3PA + FTA + AST + ORB + STL, data = NBA)
+summary(PointsReg4)
+```
+
+```{r}
+SSE_4 = sum(PointsReg4$residuals^2)
+RMSE_4 = sqrt(SSE_4/nrow(NBA))
+RMSE_4
+```
+
+So although r\^2 increased, RMSE is about the same. This is still the best model.
+
+Loading in the test file.
+
+```{r}
+NBA_test = read.csv("NBA_test.csv")
+```
+
+Calculating Out-of-sample R2
+
+```{r}
+PointsPrediction = predict(PointsReg4, newdata = NBA_test)
+SSE = sum((PointsPrediction - NBA_test$PTS)^2)
+SST = sum((mean(NBA$PTS) - NBA_test$PTS)^2)
+R2 = 1 - SSE/SST
+R2
+```
+
+Calculating RMSE
+
+```{r}
+RMSE = sqrt(SSE/nrow(NBA_test))
+RMSE
+```
