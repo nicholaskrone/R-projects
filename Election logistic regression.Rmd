@@ -1,0 +1,80 @@
+---
+title: "Election Logistic Regression"
+output: html_notebook
+---
+
+```{r}
+polling = read.csv("PollingData.csv")
+str(polling)
+table(polling$Year)
+summary(polling)
+```
+
+Using Multiple Imputation by Chained Equations to fill in NA values (requires install of mice package). Creating new df with just survey related vars
+```{r}
+simple = polling[c("Rasmussen", "SurveyUSA", "PropR", "DiffCount")]
+summary(simple)
+set.seed(144)
+imputed = complete(mice(simple))
+summary(imputed)
+polling$Rasmussen = imputed$Rasmussen
+polling$SurveyUSA = imputed$SurveyUSA
+summary(polling)
+```
+
+Train on data from 2004 and 2008, test on 2012
+```{r}
+train = subset(polling, Year == 2004 | Year == 2008)
+test = subset(polling, Year == 2012)
+```
+
+Baseline model would predict republican for every state because it is the most likely, and would have 53% accuracy
+```{r}
+table(train$Republican)
+```
+
+Smarter baseline using the sign function. If given a positive number it returns 1, if negative it returns -1. In this case, republicans were positive. Now 94% accurate
+```{r}
+table(train$Republican, sign(train$Rasmussen))
+```
+
+```{r}
+cor(train[c("Rasmussen", "SurveyUSA", "PropR", "DiffCount", "Republican")])
+```
+
+model time
+```{r}
+mod1 = glm(Republican ~ PropR, data = train, family = "binomial")
+summary(mod1)
+```
+
+Predictions. Pretty much the same as the smart baseline. ONLY TESTING AGAINST TRAINING DATA RIGHT NOW
+```{r}
+pred1 = predict(mod1, type = "response")
+table(train$Republican, pred1 >= 0.5)
+```
+
+Look back up at the correlation matrix between all the independent variable and find the least correlated independent variables. Lets try SurveyUSA and diffcount
+```{r}
+mod2 = glm(Republican ~ SurveyUSA + DiffCount, data = train, family = "binomial")
+summary(mod2)
+pred2 = predict(mod2, type = "response")
+table(train$Republican, pred2 >= 0.5)
+```
+AIC is higher which is worse, but we'll go with it anyway.
+
+Here is the baseline for the test set:
+```{r}
+table(test$Republican, sign(test$Rasmussen))
+```
+
+```{r}
+TestPrediction = predict(mod2, newdata = test, type = "response")
+table(test$Republican, TestPrediction >= 0.5)
+```
+Only one mistake.
+
+```{r}
+subset(test, TestPrediction >= 0.5 & Republican == 0)
+```
+
